@@ -1,0 +1,184 @@
+<h1>Open Fax Format/Specification</h1>
+
+<h2>v2021.03.03 | 2021-03-03</h2>
+
+<h2>License: LGPLv3</h2>
+
+<h2>Author: Nicholas Farris</h2>
+
+<h1>Definitions</h1>
+
+<h5>Client - Sender.</h5>
+
+<h5>Server - Receiver.</h5>
+
+<h5>Document - Entire PDF Document OR Entire image. Depends on imported type.</h5>
+
+<h5>Page - One section of a PDF OR Entire image. Depends on imported type.</h5>
+
+<h5>Color - integers representing Red Green and Blue.</h5>
+
+<h5>Size - Height x Width.</h5>
+
+<h5>Message - Data containing Version, Size, or Color and pixels.</h5>
+
+<h5>Version - version of the spec being implemented plus the type of spec. e.g. &ldquo;2021.03.03 REFERENCE&rdquo;.</h5>
+
+<h1>Introduction</h1>
+
+<h5>The Open Fax Format/Specification is an open format licensed under the <a href="http://www.gnu.org/licenses/lgpl-3.0.en.html">LGPLv3 license</a>.</h5>
+
+<ul>
+<li>You <a href="https://www.faa.gov/about/initiatives/plain_language/articles/mandatory/">MUST</a> publish any modifications made to this format under the GNU Lesser General Public License Version 3 or higher and comply with the license. <a href="https://choosealicense.com/licenses/lgpl-3.0/">See this page on ChooseALicense.com for a brief overview on the license</a>.</li>
+</ul>
+
+
+<h5>This specification describes a way to transmit data across a network to another computer, typically a printer or printer-connected computer, that is similar to how fax machines transmit data.</h5>
+
+<h6>This specification also describes how to save data to a file that can then be read by a device later to show a Document.</h6>
+
+<h1>Overview</h1>
+
+<h2>How does this project work?</h2>
+
+<h3>Client/Server specification</h3>
+
+<h4>Client</h4>
+
+<ol>
+<li>Import Document.</li>
+<li>Base64 encode Version and a new line (not encoded), save to file (<code>.off.gz</code> extension).</li>
+<li>Base64 encode Page width and a new line (not encoded), save to file.</li>
+<li>Base64 encode Page height and a new line (not encoded), save to file.</li>
+<li>Read Page pixel per pixel.</li>
+<li>For each pixel of the same Color, add 1 to pixel count.</li>
+<li>When a different Color is reached, encode this data using Base64, insert a new line (not encoded), and save to file.</li>
+<li> Byte 1: Red: 0 -> 255</li>
+<li> Byte 2: Green: 0 -> 255</li>
+<li> Byte 3: Blue: 0 -> 255</li>
+<li> Bytes 4 -> inifity: Pixels: 1 -> infinity</li>
+<li>Repeat steps 5-8 until end of Page reached.</li>
+<li>On end of Page, insert Base64 encoded &ldquo;NEWPAGE&rdquo;, insert a new line.</li>
+<li>Repeat steps 3-10 for next page.</li>
+<li>On end of Document, compress the file using GZip, writing the data to a file with the <code>.off</code> extension.</li>
+<li>Send this file to the Server over port <code>12345</code></li>
+<li>When the file is finished uploading, terminate the connection.</li>
+</ol>
+
+
+<h4>Server</h4>
+
+<ol>
+<li>Listen on port <code>12345</code>.</li>
+<li>Wait for file (<code>.off</code> extension) to be received.</li>
+<li>On file received, import file.</li>
+<li>Decompress file using GZip.</li>
+<li>Base64 decode first Message. This is the Version. Implement logic based on this.</li>
+<li> This document will be focused on the current version.</li>
+<li>Base64 decode next Message. This is the width.</li>
+<li>Base64 decode next Message. This is the height.</li>
+<li>Based on the given width and height, create a pixel buffer.</li>
+<li>Create integer variable for X position on coordinate plane {<code>x_coord</code>}.</li>
+<li>Create integer varibale for Y position on coordinate plane {<code>y_coord</code>}.</li>
+<li>Base64 decode next Message, Base64 decode the data.</li>
+<li> Convert Byte 1 from uchar to int.</li>
+<li> Use Byte 1 for color Red.</li>
+<li> Convert Byte 2 from uchar to int.</li>
+<li> Use Byte 2 for color Green.</li>
+<li> Convert Byte 3 from uchar to int.</li>
+<li> Use Byte 3 for color Blue.</li>
+<li> Convert Bytes 4 -> infinity from uchar to char.</li>
+<li> Append converted chars to a string.</li>
+<li> Convert string to int.</li>
+<li> Use int as the amount of pixels to paint.</li>
+<li>For each pixel, paint the specified Color, adding one to <code>x_coord</code>.</li>
+<li>When <code>x_coord</code> reaches the width, wrap back to the beginning of the Page, 1 pixel down from the previous line (add one to <code>y_coord</code>).</li>
+<li>Repeat steps 11 -> 14 until end of Page is reached (row count being one more than height and pixel count being 0).</li>
+<li>Print Page (if printer).</li>
+<li>Go to step 6 for next Page.</li>
+<li>When the end of Document reached, terminate connection.</li>
+</ol>
+
+
+<h5>For a graphical representation, see <a href="./Client%20Server.html">this page</a></h5>
+
+<h3>Save To File specification</h3>
+
+<h4>Saving</h4>
+
+<ul>
+<li>Perform Client procedure, ignoring all references to networking.</li>
+</ul>
+
+
+<h4>Reading</h4>
+
+<ul>
+<li>Perform Server procedure, ignoring all references to networking.</li>
+</ul>
+
+
+<h3>Graphical representation of the specification</h3>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
+<div class="mermaid">
+sequenceDiagram
+	
+	Note over Client: Import Document
+	Note over Server: Listen on port 12345
+	Note over Server: Wait for file with .off extension
+	Note over Client: Base64 encode Version with (non-encoded) new line.
+	Note over Client: Save to file (.off.gz extension)
+	loop Until end of Document
+	    Note over Client: Base64 encode width with (non-encoded) new line.
+	    Note over Client: Save to file (.off.gz extension)
+	    Note over Client: Base64 encode height with (non-encoded) new line.
+	    Note over Client: Save to file (.off.gz extension)
+	    loop Until end of Page
+	        loop Until new Color
+	            Note over Client: Read pixel for Color
+	            Note over Client: Add one to pixel count
+	        end
+	        Note over Client: Base64 Encode (Data (red: int, green: int, blue: int, pixel_count: int))
+	        Note over Client: Save Data to file (.off.gz extension)
+	    end
+	    Note over Client: Base64 Encode "NEWPAGE"
+	    Note over Client: Save to file (.off.gz extension)
+	end
+	Note over Client: Compress .off.gz file using GZip , save data to .off file
+	alt For network
+	    Client->>Server: Connection on Port (12345)
+	    Client->>Server: Send .off file to Server
+	    Note over Client: On file upload complete, terminate connection
+	end
+	
+	Note over Server: Import .off file 
+	Note over Server: Decompress file using GZip
+	Note over Server: Base64 decode first Message (Version)
+	loop Until end of Document
+		Note over Server: Base64 decode next Message (width)
+		Note over Server: Base64 decode next Message (height)
+		Note over Server: Create pixel buffer with given width and height
+		Note over Server: Create integer variable for X position on coordinate plane {x_coord}
+		Note over Server: Create integer variable for Y position on coordinate plane {y_coord}
+		loop Until end of Page
+			Note over Server: Base64 decode next Message
+			Note right of Server: Byte 1 (uchar) to int (Red)
+			Note right of Server: Byte 2 (uchar) to int (Green)
+			Note right of Server: Byte 3 (uchar) to int (Blue)
+			Note right of Server: Rest of Bytes (uchar) to char to string to int (pixels)
+			loop For each pixel
+				Note over Server: Paint specified Color
+				Note over Server: Add one to x_coord
+			end
+		end
+		alt If printing
+			Note over Server: Print Page
+		else If rendering to GUI
+			Note over Server: Render Page
+		end
+		
+    end
+</div>
+

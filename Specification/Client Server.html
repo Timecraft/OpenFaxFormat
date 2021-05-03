@@ -1,0 +1,62 @@
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
+<div class="mermaid">
+sequenceDiagram
+	
+	Note over Client: Import Document
+	Note over Server: Listen on port 12345
+	Note over Server: Wait for file with .off extension
+	Note over Client: Base64 encode Version with (non-encoded) new line.
+	Note over Client: Save to file (.off.gz extension)
+	loop Until end of Document
+	    Note over Client: Base64 encode width with (non-encoded) new line.
+	    Note over Client: Save to file (.off.gz extension)
+	    Note over Client: Base64 encode height with (non-encoded) new line.
+	    Note over Client: Save to file (.off.gz extension)
+	    loop Until end of Page
+	        loop Until new Color
+	            Note over Client: Read pixel for Color
+	            Note over Client: Add one to pixel count
+	        end
+	        Note over Client: Base64 Encode (Data (red: int, green: int, blue: int, pixel_count: int))
+	        Note over Client: Save Data to file (.off.gz extension)
+	    end
+	    Note over Client: Base64 Encode "NEWPAGE"
+	    Note over Client: Save to file (.off.gz extension)
+	end
+	Note over Client: Compress .off.gz file using GZip , save data to .off file
+	alt For network
+	    Client->>Server: Connection on Port (12345)
+	    Client->>Server: Send .off file to Server
+	    Note over Client: On file upload complete, terminate connection
+	end
+	
+	Note over Server: Import .off file 
+	Note over Server: Decompress file using GZip
+	Note over Server: Base64 decode first Message (Version)
+	loop Until end of Document
+		Note over Server: Base64 decode next Message (width)
+		Note over Server: Base64 decode next Message (height)
+		Note over Server: Create pixel buffer with given width and height
+		Note over Server: Create integer variable for X position on coordinate plane {x_coord}
+		Note over Server: Create integer variable for Y position on coordinate plane {y_coord}
+		loop Until end of Page
+			Note over Server: Base64 decode next Message
+			Note right of Server: Byte 1 (uchar) to int (Red)
+			Note right of Server: Byte 2 (uchar) to int (Green)
+			Note right of Server: Byte 3 (uchar) to int (Blue)
+			Note right of Server: Rest of Bytes (uchar) to char to string to int (pixels)
+			loop For each pixel
+				Note over Server: Paint specified Color
+				Note over Server: Add one to x_coord
+			end
+		end
+		alt If printing
+			Note over Server: Print Page
+		else If rendering to GUI
+			Note over Server: Render Page
+		end
+		
+    end
+</div>
+

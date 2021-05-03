@@ -1,0 +1,37 @@
+# Define Project
+project (   '',# Name
+            'vala', 'c', # Language(s)
+            version: '2021.02.11' # Version number (IS08601 (YYYY.MM.DD))
+        )
+        
+# Import GNOME and i18n (translation)
+# Uncomment next two lines to import
+# gnome = import ('gnome')
+# i18n = import ('i18n')
+
+# Global arguments
+add_global_arguments ('-DGETTEXT_PACKAGE="@0@"'.format (meson.project_name ()), language: 'c')
+
+# Get C Compiler
+cc = meson.get_compiler ('c')
+
+# Gresource compilation
+# Uncomment next 5 lines to use
+# asresources = gnome.compile_resources(
+#     'as-resources', 'data/gresource.xml',
+#     source_dir: 'data',
+#     c_name: 'as'
+# )
+
+# Enter `src` directory
+subdir ('src')
+
+# Enter `data` directory
+subdir ('data')
+
+# Enter `po` directory (language files)
+subdir ('po')
+
+# Post-installation script
+meson.add_install_script (join_paths ('meson', 'post_install.py'))
+
